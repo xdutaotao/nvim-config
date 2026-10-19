@@ -6,6 +6,11 @@
 -- Reference (LazyVim defaults): https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- ====================================================================
 
+-- Leader key: LazyVim's defaults (lazyvim/config/options.lua) set " ",
+-- and this file loads after them, so this value wins
+vim.g.mapleader = ","
+vim.g.maplocalleader = "\\"
+
 -- Show a global statusline instead of one per window
 vim.o.laststatus = 3
 
@@ -79,11 +84,11 @@ vim.o.cursorline = true
 -- Show absolute line numbers
 vim.o.number = true
 
--- Show relative numbers (useful for motions like 5j, 3k)
-vim.o.relativenumber = true
+-- Relative numbers disabled: show absolute line numbers only
+vim.o.relativenumber = false
 
 -- Set line number column width
-vim.o.numberwidth = 5
+vim.o.numberwidth = 6
 
 -- Always show the sign column (for LSP, Git, etc.)
 vim.o.signcolumn = "yes"
@@ -100,8 +105,8 @@ vim.o.termguicolors = true
 -- Disable the old ruler (line/column display)
 vim.o.ruler = false
 
--- Set command line height (0 = auto-hide, reduces UI clutter)
-vim.o.cmdheight = 0
+-- Set command line height (1 = always show the bottom command line)
+vim.o.cmdheight = 1
 
 -- Set help window height
 vim.o.helpheight = 10

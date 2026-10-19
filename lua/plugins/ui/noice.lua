@@ -8,8 +8,13 @@ return {
     notify = {
       enabled = true,
     },
+    -- Disabled so Neovim keeps the bottom command line (cmdheight), see noice ui/init.lua:
+    -- ext_messages forces cmdheight to 0, and enabling messages also re-enables the cmdline
+    messages = {
+      enabled = false,
+    },
     cmdline = {
-      enabled = true, -- enables the Noice cmdline UI
+      enabled = false, -- enables the Noice cmdline UI
       view = "cmdline_popup", -- view for rendering the cmdline. Change to `cmdline` to get a classic cmdline at the bottom
       opts = {}, -- global options for the cmdline. See section on views
       format = {

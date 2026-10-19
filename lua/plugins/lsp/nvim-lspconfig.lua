@@ -5,6 +5,17 @@ return {
   opts = function(_, opts)
     local custom_path = "plugins.lsp.settings"
 
+    -- Diagnostics are provided by Neovim's builtin vim.diagnostic, not by a plugin.
+    -- LazyVim enables underline + signs + virtual_text by default; disable all rendering.
+    -- LSP still works (goto, completion, rename, format); use trouble.nvim to inspect diagnostics.
+    opts.diagnostics = vim.tbl_deep_extend("force", opts.diagnostics or {}, {
+      underline = false,
+      virtual_text = false,
+      virtual_lines = false,
+      signs = false,
+      update_in_insert = false,
+    })
+
     local disabled_servers = {
       "phpactor",
       "rust_analyzer",
