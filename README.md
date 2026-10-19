@@ -49,7 +49,7 @@ In windows, you can use [scoop](https://scoop.sh/) to install them.
 #### Linux/macOS
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/Alexis12119/nvim-config/main/installer/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/xdutaotao/nvim-config/main/installer/install.sh)
 ```
 
 #### Windows (PowerShell)
@@ -57,7 +57,7 @@ bash <(curl -s https://raw.githubusercontent.com/Alexis12119/nvim-config/main/in
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-Invoke-WebRequest https://raw.githubusercontent.com/Alexis12119/nvim-config/main/installer/install.ps1 -UseBasicParsing |
+Invoke-WebRequest https://raw.githubusercontent.com/xdutaotao/nvim-config/main/installer/install.ps1 -UseBasicParsing |
 Invoke-Expression
 ```
 
@@ -79,10 +79,10 @@ Invoke-Expression
 
    ```bash
    # Linux/macOS
-   git clone https://github.com/Alexis12119/nvim-config.git ~/.config/nvim
+   git clone https://github.com/xdutaotao/nvim-config.git ~/.config/nvim
 
    # Windows
-   git clone https://github.com/Alexis12119/nvim-config.git $env:LOCALAPPDATA\nvim
+   git clone https://github.com/xdutaotao/nvim-config.git $env:LOCALAPPDATA\nvim
    ```
 
 3. Start Neovim and let Lazy install the plugins:
