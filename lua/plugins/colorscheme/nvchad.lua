@@ -3,6 +3,9 @@
 return {
   {
     "nvchad/ui",
+    build = function()
+      require("config.patches.nvchad").apply()
+    end,
     config = function()
       require("nvchad")
     end,
