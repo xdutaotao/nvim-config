@@ -255,12 +255,5 @@ autocmd("FileType", {
   group = general,
 })
 
--- Disable Tabline
-autocmd("BufEnter", {
-  pattern = "*",
-  callback = function()
-    vim.opt.showtabline = 0
-  end,
-  group = general,
-  desc = "Disable tabline",
-})
+-- Tabline visibility is controlled by NvChad's tabufline settings in chadrc.lua.
+-- Don't override `showtabline` here.

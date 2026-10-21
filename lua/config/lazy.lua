@@ -22,6 +22,9 @@ require("lazy").setup({
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     -- import/override with your plugins
     { import = "plugins" },
+    -- Disable friendly-snippets (pulled in by LazyVim's coding.blink extra)
+    -- without touching the plugin spec in lua/plugins/editor/
+    { "rafamadriz/friendly-snippets", enabled = false },
   },
   defaults = {
     -- By default, only LazyVim plugins will be lazy-loaded. Your custom plugins will load during startup.

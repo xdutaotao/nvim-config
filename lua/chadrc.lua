@@ -40,9 +40,9 @@ M.ui = {
     modules = require("config.statusline").modules,
   },
   tabufline = {
-    -- enabled = vim.g.colorscheme == "nvchad",
-    enabled = false,
-    lazyload = true,
+    enabled = vim.g.colorscheme == "nvchad",
+    -- Always show the tabline, regardless of the number of open buffers
+    lazyload = false,
     order = { "treeOffset", "buffers", "tabs", "btns" },
     modules = require("config.tabufline").modules,
   },
