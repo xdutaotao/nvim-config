@@ -8,6 +8,42 @@
 local command = vim.api.nvim_create_user_command
 
 -- --------------------------------------------------------------------
+-- Browse an Archive
+-- --------------------------------------------------------------------
+-- Opens the archive browser (config/archive.lua). Archives nested inside
+-- archives are first-class: the URI is `archive://<root>!/<member>!/<member>`,
+-- so any depth works and buffers never collide.
+--
+-- Usage:
+--   :Archive                                    → prompt for an archive
+--   :Archive <archive>                          → browse it
+--   :Archive <archive> <member> [!<member> ...] → jump straight to a member
+command("Archive", function(args)
+  local archive = require("config.archive")
+  local path = args.fargs[1]
+
+  if not path then
+    path = vim.fn.input("Archive: ", "", "file")
+  end
+  if path == "" then
+    return
+  end
+
+  path = vim.fn.fnamemodify(vim.fn.expand(path), ":p")
+  if vim.fn.filereadable(path) == 0 then
+    vim.notify("Archive: not a readable file: " .. path, vim.log.levels.ERROR)
+    return
+  end
+
+  local members = vim.list_slice(args.fargs, 2)
+  archive.open(archive.build(path, members))
+end, {
+  nargs = "*",
+  complete = "file",
+  desc = "Browse an archive, including archives nested inside it",
+})
+
+-- --------------------------------------------------------------------
 -- LuaSnip: Edit Snippet Files
 -- --------------------------------------------------------------------
 -- Useful for quickly editing or creating snippets managed by LuaSnip.

@@ -57,6 +57,9 @@ require("lazy").setup({
         -- "matchit",
         -- "matchparen",
         "netrwPlugin",
+        -- tar.vim/zipPlugin replaced by config.archive: JAR-style URIs support
+        -- archives nested inside archives, which tar.vim's `tarfile::` scheme
+        -- cannot express (and it raises E95 on reopening a member).
         "tarPlugin",
         "tohtml",
         -- "tutor",
