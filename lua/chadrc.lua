@@ -8,7 +8,7 @@ local M = {}
 local highlights = require("highlights")
 
 M.base46 = {
-  theme = "mountain",
+  theme = "tokyodark",
   transparency = false,
   hl_override = highlights.override,
   hl_add = highlights.add,
