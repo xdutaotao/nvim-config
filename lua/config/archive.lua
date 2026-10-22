@@ -479,11 +479,116 @@ local function render_browse(buf, uri, items)
   browse_items[buf] = by_line
 end
 
+---Bytes shown by the hexdump preview for binary members. Enough to read a
+---header or magic, small enough to keep the buffer responsive.
+local HEXDUMP_BYTES = 512
+
+---Thresholds for the binary test below. A member is binary when BOTH hold:
+---  * control bytes (not \t \n \r) exceed BINARY_CONTROL_RATIO, and
+---  * high bytes (>= 0x80) exceed BINARY_HIGH_RATIO.
+---Each signal alone is unreliable. Control bytes alone catch a 37-byte note
+---with three NULs (8%). High bytes alone flag any UTF-8 text, e.g. Chinese
+---device logs (65% high bytes, zero control bytes). Together they separate
+---binary formats from both kinds of text.
+local BINARY_CONTROL_RATIO = 0.05
+local BINARY_HIGH_RATIO = 0.10
+
+---Whether `file` holds binary data, judged on the whole file. Works at any
+---size, so small binaries like a 1 KB .dat are caught too.
+---@param file string
+---@return boolean
+local function is_binary(file)
+  local fd = io.open(file, "rb")
+  if not fd then
+    return false
+  end
+  local data = fd:read("*a") or ""
+  fd:close()
+  if #data == 0 then
+    return false
+  end
+
+  local control, high = 0, 0
+  for i = 1, #data do
+    local b = data:byte(i)
+    if b >= 128 then
+      high = high + 1
+    elseif b < 32 and b ~= 9 and b ~= 10 and b ~= 13 then
+      control = control + 1
+    end
+  end
+  local n = #data
+  return control / n > BINARY_CONTROL_RATIO and high / n > BINARY_HIGH_RATIO
+end
+
+
+
+---Read a text file into buffer lines without `readfile`.
+---
+---`readfile` turns each NUL byte into a newline, and `nvim_buf_set_lines`
+---rejects any line that still contains one. Splitting the raw bytes ourselves
+---keeps the text intact: NULs become `^@`, the notation Vim uses for them, and
+---a trailing `\r` is dropped the same way readfile drops it.
+---@param file string
+---@return string[]
+local function text_lines(file)
+  local fd = io.open(file, "rb")
+  if not fd then
+    return {}
+  end
+  local data = fd:read("*a") or ""
+  fd:close()
+
+  local lines = {}
+  local start = 1
+  while start <= #data do
+    local stop = data:find("\n", start, true)
+    local line = data:sub(start, (stop or #data + 1) - 1)
+    line = line:gsub("\r$", ""):gsub("%z", "^@")
+    lines[#lines + 1] = line
+    if not stop then
+      break
+    end
+    start = stop + 1
+  end
+  return lines
+end
+
+
+---Hexdump lines for the first HEXDUMP_BYTES of `file`, via xxd.
+---Returns text lines (no embedded newlines), ready for nvim_buf_set_lines.
+---@param file string
+---@return string[]|nil
+local function hexdump_lines(file)
+  local out = vim.fn.system({ "xxd", "-l", tostring(HEXDUMP_BYTES), file })
+  if vim.v.shell_error ~= 0 then
+    return nil
+  end
+  local lines = {}
+  for line in out:gmatch("[^\n]+") do
+    lines[#lines + 1] = line
+  end
+  return lines
+end
+
 ---@param buf integer
 ---@param uri string
 ---@param resolved Archive.Resolved
 local function render_content(buf, uri, resolved)
-  local lines = vim.fn.readfile(resolved.file)
+  local lines
+  if is_binary(resolved.file) then
+    lines = hexdump_lines(resolved.file)
+    if not lines then
+      lines = { "(binary file, could not run xxd)" }
+    end
+    -- Header tells the reader this is a preview, not the whole member.
+    table.insert(lines, 1, ('" binary member, showing first %d bytes  (x extracts the whole file)'):format(HEXDUMP_BYTES))
+    table.insert(lines, 2, "")
+  else
+    -- Text: split the raw bytes ourselves so NULs survive as ^@ instead of
+    -- becoming the newlines readfile would produce.
+    lines = text_lines(resolved.file)
+  end
 
   vim.bo[buf].modifiable = true
   api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -532,7 +637,7 @@ local function setup_maps(buf)
     M.extract()
   end, opts)
   vim.keymap.set("n", "q", function()
-    api.nvim_win_close(0, true)
+    M.close()
   end, opts)
 end
 
@@ -637,7 +742,66 @@ function M.enter()
   M.open(M.child_uri(uri, item.name))
 end
 
----Go up one level, or close the window at the archive root.
+---Find a buffer to show in place of an archive view.
+---
+---Prefers the alternate buffer, then any listed non-archive buffer. `#` alone
+---is unreliable: the placeholders created by BufReadCmd would win.
+---@param exclude integer buffer to skip (the archive view being left)
+---@return integer|nil
+local function replacement_buffer(exclude)
+  local alt = vim.fn.bufnr("#")
+  if alt > 0
+    and alt ~= exclude
+    and api.nvim_buf_is_valid(alt)
+    and vim.bo[alt].buflisted
+    and vim.bo[alt].buftype == ""
+    and not vim.b[alt].archive_uri
+  then
+    return alt
+  end
+
+  local found
+  for _, b in ipairs(api.nvim_list_bufs()) do
+    if b ~= exclude
+      and api.nvim_buf_is_valid(b)
+      and vim.bo[b].buflisted
+      and vim.bo[b].buftype == ""
+      and not vim.b[b].archive_uri
+    then
+      found = b
+    end
+  end
+  return found
+end
+
+---Leave the current archive view.
+---
+---With several windows open this closes the window (like `:q`); with only one
+---window it switches that window to another buffer instead, because closing
+---the last window raises E444 and effectively quits Neovim.
+function M.close()
+  if #api.nvim_list_wins() > 1 then
+    api.nvim_win_close(0, true)
+    return
+  end
+
+  local current = api.nvim_get_current_buf()
+  local target = replacement_buffer(current)
+  if target then
+    vim.cmd("buffer " .. target)
+    return
+  end
+
+  -- Nothing else to show: fall back to the archive's directory rather than
+  -- leaving an empty window behind.
+  local uri = vim.b.archive_uri
+  local parsed = uri and M.parse(uri)
+  if parsed then
+    vim.cmd.edit(vim.fn.fnameescape(vim.fn.fnamemodify(parsed.path, ":h")))
+  end
+end
+
+---Go up one level, or leave the archive at the root.
 function M.up()
   local uri = vim.b.archive_uri
   local parsed = uri and M.parse(uri)
@@ -646,22 +810,11 @@ function M.up()
   end
 
   if #parsed.members == 0 then
-    -- At the archive root: leave the browse view for the most recent
-    -- non-archive buffer. `#` is unreliable here because the placeholders
-    -- created by BufReadCmd would win. The archive buffer is kept either way,
-    -- so it stays reachable from the buffer list.
+    -- At the archive root: leave the browse view for another buffer. The
+    -- archive buffer itself is kept, so it stays reachable from the buffer
+    -- list.
     local root = api.nvim_get_current_buf()
-    local fallback
-    for _, b in ipairs(api.nvim_list_bufs()) do
-      if b ~= root
-        and api.nvim_buf_is_valid(b)
-        and vim.bo[b].buflisted
-        and vim.bo[b].buftype == ""
-        and not vim.b[b].archive_uri
-      then
-        fallback = b
-      end
-    end
+    local fallback = replacement_buffer(root)
 
     if fallback then
       vim.cmd("buffer " .. fallback)
